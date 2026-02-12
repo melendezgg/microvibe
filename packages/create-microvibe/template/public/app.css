@@ -1,0 +1,122 @@
+:root {
+  --space-1: clamp(0.5rem, 0.45rem + 0.2vw, 0.75rem);
+  --space-2: clamp(0.75rem, 0.7rem + 0.25vw, 1rem);
+  --space-3: clamp(1rem, 0.95rem + 0.35vw, 1.25rem);
+  --space-4: clamp(1.5rem, 1.4rem + 0.5vw, 2rem);
+  --radius-1: 0.625rem;
+  --radius-2: 1rem;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  font-family:
+    system-ui,
+    -apple-system,
+    "SF Pro Text",
+    "SF Pro Display",
+    "Segoe UI",
+    Roboto,
+    "Noto Sans",
+    Ubuntu,
+    Cantarell,
+    "Helvetica Neue",
+    Arial,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+.app-shell {
+  width: min(100% - (2 * var(--space-3)), 72rem);
+  margin-inline: auto;
+  padding-block: var(--space-4);
+}
+
+.app-main {
+  display: grid;
+  gap: var(--space-3);
+  border-radius: var(--radius-2);
+  padding: var(--space-4);
+}
+
+.app-header {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.app-header h1 {
+  margin: 0;
+  font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem);
+  line-height: 1.1;
+}
+
+.app-header p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.route-root {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.index-page {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.index-page h2,
+.index-page p {
+  margin: 0;
+}
+
+code {
+  font-size: 0.92em;
+  padding: 0.1em 0.35em;
+  border-radius: 0.4em;
+}
+
+.alert-box {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-radius: var(--radius-1);
+}
+
+.alert-title,
+.alert-message,
+.alert-note {
+  margin: 0;
+}
+
+.alert-title {
+  font-weight: 600;
+}
+
+.alert-actions {
+  display: flex;
+}
+
+@media (max-width: 42rem) {
+  .app-main {
+    padding: var(--space-3);
+    border-radius: var(--radius-1);
+  }
+}

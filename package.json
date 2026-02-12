@@ -1,0 +1,10 @@
+{
+  "name": "microvibe",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev:runtime": "npm --workspace packages/microvibe run dev"
+  }
+}

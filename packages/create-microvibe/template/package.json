@@ -1,0 +1,16 @@
+{
+  "name": "__APP_NAME__",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch server.tsx"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "preact": "^10.26.4",
+    "preact-render-to-string": "^6.5.13"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.3"
+  }
+}

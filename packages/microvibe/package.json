@@ -1,0 +1,22 @@
+{
+  "name": "microvibe",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "microvibe": "./bin/microvibe.js"
+  },
+  "scripts": {
+    "dev": "tsx src/server.tsx",
+    "check": "tsx --tsconfig ./tsconfig.json src/server.tsx"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "preact": "^10.26.4",
+    "preact-render-to-string": "^6.5.13"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.3",
+    "typescript": "^5.7.3"
+  }
+}
