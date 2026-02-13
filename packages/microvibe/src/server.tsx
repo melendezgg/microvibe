@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { h, type VNode } from "preact";
 import render from "preact-render-to-string";
+import { selectApiHandler } from "./api";
 import {
   type RouteParamRules,
   type RouteParamsValidator,
@@ -128,6 +129,20 @@ function writeJson(res: http.ServerResponse, status: number, payload: unknown) {
   res.end(JSON.stringify(payload));
 }
 
+function writeApiError(
+  res: http.ServerResponse,
+  status: number,
+  code: string,
+  message: string,
+  headers?: Record<string, string>
+) {
+  res.writeHead(status, {
+    "Content-Type": "application/json; charset=utf-8",
+    ...(headers || {}),
+  });
+  res.end(JSON.stringify({ ok: false, code, error: message }));
+}
+
 async function readJsonBody(req: http.IncomingMessage, maxBytes = 1_000_000) {
   const chunks: Buffer[] = [];
   let size = 0;
@@ -149,33 +164,41 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
   const resolved = await resolveModule(apiDir, apiPath, [".js"]);
 
   if (!resolved) {
-    writeJson(res, 404, { ok: false, error: "API route not found" });
+    writeApiError(res, 404, "API_ROUTE_NOT_FOUND", "API route not found");
     return;
   }
 
-  const mod = (await import(pathToFileURL(resolved.file).href + `?t=${Date.now()}`)) as ApiModule;
-  const method = (req.method || "GET").toUpperCase() as keyof ApiModule;
-  const handler = mod[method] || mod.default;
+  try {
+    const mod = (await import(pathToFileURL(resolved.file).href + `?t=${Date.now()}`)) as ApiModule;
+    const method = (req.method || "GET").toUpperCase();
+    const selected = selectApiHandler(mod, method);
 
-  if (typeof handler !== "function") {
-    writeJson(res, 405, { ok: false, error: "Method not allowed" });
-    return;
-  }
+    if (typeof selected.handler !== "function") {
+      const allow = selected.allow.length > 0 ? selected.allow.join(", ") : "GET";
+      writeApiError(res, 405, "METHOD_NOT_ALLOWED", "Method not allowed", { Allow: allow });
+      return;
+    }
 
-  const result = await handler({
-    req,
-    res,
-    url,
-    params: resolved.params,
-    json: (status, payload) => writeJson(res, status, payload),
-    readJsonBody: (maxBytes) => readJsonBody(req, maxBytes),
-  });
+    const result = await selected.handler({
+      req,
+      res,
+      url,
+      params: resolved.params,
+      json: (status, payload) => writeJson(res, status, payload),
+      readJsonBody: (maxBytes) => readJsonBody(req, maxBytes),
+    });
 
-  if (!res.writableEnded && result !== undefined) {
-    writeJson(res, 200, result);
-  } else if (!res.writableEnded) {
-    res.writeHead(204);
-    res.end();
+    if (!res.writableEnded && result !== undefined) {
+      writeJson(res, 200, result);
+    } else if (!res.writableEnded) {
+      res.writeHead(204);
+      res.end();
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    const code = message === "Body too large" || message.includes("JSON") ? "BAD_REQUEST" : "INTERNAL_ERROR";
+    const status = code === "BAD_REQUEST" ? 400 : 500;
+    writeApiError(res, status, code, message);
   }
 }
 
