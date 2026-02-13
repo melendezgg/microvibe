@@ -5,6 +5,11 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { h, type VNode } from "preact";
 import render from "preact-render-to-string";
+import {
+  type RouteParamRules,
+  type RouteParamsValidator,
+  validateRouteParams,
+} from "./route-params";
 import { resolveModule } from "./router";
 
 type RouteContext = {
@@ -16,6 +21,8 @@ type RouteContext = {
 type RouteModule = {
   default: (ctx: RouteContext & { children?: VNode }) => VNode | string;
   mode?: "server" | "client";
+  params?: RouteParamRules;
+  validateParams?: RouteParamsValidator;
 };
 
 type ApiContext = {
@@ -237,6 +244,13 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
     const routeMod = (await import(pathToFileURL(resolved.file).href + `?t=${Date.now()}`)) as RouteModule;
     if (typeof routeMod.default !== "function") {
       throw new Error(`Route ${resolved.file} must export default component`);
+    }
+
+    const paramCheck = validateRouteParams(resolved.params, routeMod.params, routeMod.validateParams);
+    if (!paramCheck.ok) {
+      res.writeHead(paramCheck.status, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(`<!doctype html><html><body><h1>${paramCheck.status}</h1><p>${paramCheck.error}</p></body></html>`);
+      return;
     }
 
     const ctx: RouteContext = { req, url, params: resolved.params };
