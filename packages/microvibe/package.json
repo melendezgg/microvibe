@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "tsx src/server.tsx",
-    "check": "tsx --tsconfig ./tsconfig.json src/server.tsx"
+    "check": "tsx --tsconfig ./tsconfig.json src/server.tsx",
+    "test": "tsx --test test/**/*.test.ts"
   },
   "dependencies": {
     "esbuild": "^0.25.0",

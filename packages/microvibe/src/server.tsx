@@ -5,6 +5,7 @@ import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { h, type VNode } from "preact";
 import render from "preact-render-to-string";
+import { resolveModule } from "./router";
 
 type RouteContext = {
   req: http.IncomingMessage;
@@ -37,11 +38,6 @@ type ApiModule = {
   DELETE?: ApiHandler;
 };
 
-type ResolvedModule = {
-  file: string;
-  params: Record<string, string>;
-};
-
 const root = process.cwd();
 const routesDir = path.join(root, "routes");
 const apiDir = path.join(root, "api");
@@ -56,16 +52,6 @@ const contentType: Record<string, string> = {
   ".json": "application/json; charset=utf-8",
 };
 
-function normalizePath(urlPath: string) {
-  return urlPath.split("?")[0].replace(/\/+$/, "") || "/";
-}
-
-function toParts(urlPath: string) {
-  const normalized = normalizePath(urlPath);
-  if (normalized === "/") return [];
-  return normalized.slice(1).split("/").map(decodeURIComponent);
-}
-
 async function fileExists(filePath: string) {
   try {
     await fs.access(filePath);
@@ -73,84 +59,6 @@ async function fileExists(filePath: string) {
   } catch {
     return false;
   }
-}
-
-async function resolveFileFromBase(basePath: string, exts: string[]): Promise<ResolvedModule | null> {
-  for (const ext of exts) {
-    const file = `${basePath}${ext}`;
-    if (await fileExists(file)) return { file, params: {} };
-  }
-  return null;
-}
-
-async function resolveExact(baseDir: string, parts: string[], exts: string[]) {
-  if (parts.length === 0) return resolveFileFromBase(path.join(baseDir, "index"), exts);
-  const direct = await resolveFileFromBase(path.join(baseDir, ...parts), exts);
-  if (direct) return direct;
-  return resolveFileFromBase(path.join(baseDir, ...parts, "index"), exts);
-}
-
-async function resolveDynamic(
-  dir: string,
-  parts: string[],
-  params: Record<string, string>,
-  exts: string[]
-): Promise<ResolvedModule | null> {
-  if (parts.length === 0) {
-    const index = await resolveFileFromBase(path.join(dir, "index"), exts);
-    if (index) return { ...index, params };
-    return null;
-  }
-
-  const [segment, ...rest] = parts;
-
-  if (rest.length === 0) {
-    const directFile = await resolveFileFromBase(path.join(dir, segment), exts);
-    if (directFile) return { ...directFile, params };
-  }
-
-  const exactDir = path.join(dir, segment);
-  try {
-    const stat = await fs.stat(exactDir);
-    if (stat.isDirectory()) {
-      const resolved = await resolveDynamic(exactDir, rest, params, exts);
-      if (resolved) return resolved;
-    }
-  } catch {
-    // ignore
-  }
-
-  const entries = await fs.readdir(dir, { withFileTypes: true });
-
-  if (rest.length === 0) {
-    for (const entry of entries) {
-      if (!entry.isFile()) continue;
-      const match = entry.name.match(/^\[([^\]]+)\](\.[a-z]+)$/);
-      if (!match) continue;
-      if (!exts.includes(match[2])) continue;
-      return { file: path.join(dir, entry.name), params: { ...params, [match[1]]: segment } };
-    }
-  }
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const match = entry.name.match(/^\[([^\]]+)\]$/);
-    if (!match) continue;
-    const resolved = await resolveDynamic(path.join(dir, entry.name), rest, {
-      ...params,
-      [match[1]]: segment,
-    }, exts);
-    if (resolved) return resolved;
-  }
-
-  return null;
-}
-
-async function resolveModule(baseDir: string, urlPath: string, exts: string[]): Promise<ResolvedModule | null> {
-  const parts = toParts(urlPath);
-  const exact = await resolveExact(baseDir, parts, exts);
-  if (exact) return exact;
-  return resolveDynamic(baseDir, parts, {}, exts);
 }
 
 async function resolveAppWrapper() {
@@ -230,7 +138,7 @@ async function readJsonBody(req: http.IncomingMessage, maxBytes = 1_000_000) {
 }
 
 async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, url: URL) {
-  const apiPath = normalizePath(url.pathname.replace(/^\/api/, "")) || "/";
+  const apiPath = url.pathname.replace(/^\/api/, "") || "/";
   const resolved = await resolveModule(apiDir, apiPath, [".js"]);
 
   if (!resolved) {
