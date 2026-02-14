@@ -47,7 +47,7 @@ function parseSegment(raw: string): Segment {
 function scoreForSegment(segment: Segment) {
   if (segment.type === "static") return 40;
   if (segment.type === "dynamic") return 30;
-  return segment.optional ? 10 : 20;
+  return segment.optional ? -10 : 20;
 }
 
 function compareCandidates(a: RouteCandidate, b: RouteCandidate) {

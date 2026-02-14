@@ -87,3 +87,45 @@ test("matches optional catch-all route with and without segments", async () => {
     }
   );
 });
+
+test("prefers exact index route over optional catch-all on same prefix", async () => {
+  await withTempRoutes(
+    async (routesDir) => {
+      await writeRoute(path.join(routesDir, "docs", "index.jsx"));
+      await writeRoute(path.join(routesDir, "docs", "[[...slug]].jsx"));
+    },
+    async (routesDir) => {
+      const resolved = await resolveModule(routesDir, "/docs", [".jsx"]);
+      assert.ok(resolved);
+      assert.equal(path.basename(resolved.file), "index.jsx");
+      assert.deepEqual(resolved.params, {});
+    }
+  );
+});
+
+test("prefers static child route over dynamic child route", async () => {
+  await withTempRoutes(
+    async (routesDir) => {
+      await writeRoute(path.join(routesDir, "users", "settings.jsx"));
+      await writeRoute(path.join(routesDir, "users", "[id].jsx"));
+    },
+    async (routesDir) => {
+      const resolved = await resolveModule(routesDir, "/users/settings", [".jsx"]);
+      assert.ok(resolved);
+      assert.equal(path.basename(resolved.file), "settings.jsx");
+      assert.deepEqual(resolved.params, {});
+    }
+  );
+});
+
+test("ignores invalid route definitions where catch-all is not the last segment", async () => {
+  await withTempRoutes(
+    async (routesDir) => {
+      await writeRoute(path.join(routesDir, "docs", "[...slug]", "edit.jsx"));
+    },
+    async (routesDir) => {
+      const resolved = await resolveModule(routesDir, "/docs/a/edit", [".jsx"]);
+      assert.equal(resolved, null);
+    }
+  );
+});
