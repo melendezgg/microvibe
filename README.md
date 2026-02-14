@@ -2,6 +2,15 @@
 
 MicroVibe is a Vibe Coding starter kit for building web apps fast with a minimal runtime, file-based routing and JSX.
 
+## Why MicroVibe
+
+MicroVibe is designed for builders who want:
+
+- File-based routing without heavy framework overhead.
+- API routes and page routes in one simple project structure.
+- SSR by default, with per-route client mode when interactivity is needed.
+- A runtime small enough to understand and modify.
+
 It combines:
 
 - `packages/microvibe`: the runtime/CLI used to serve MicroVibe apps.
@@ -12,6 +21,18 @@ Core idea:
 - Start from a working app in seconds
 - Iterate directly in routes and components
 - Keep defaults simple, responsive, and easy to customize
+
+## Who This Is For
+
+- Developers who like JSX and want fast local iteration.
+- Teams validating product ideas without full framework complexity.
+- Contributors who prefer explicit runtime behavior over black-box tooling.
+
+## Community and Contribution
+
+- Start with docs and examples, then open issues with concrete repro steps.
+- For first contributions, focus on routing, API behavior, docs, and starter DX.
+- `docs/SHOW_HN.md` contains a launch post draft and a practical HN rollout checklist.
 
 ## Workspace Structure
 
