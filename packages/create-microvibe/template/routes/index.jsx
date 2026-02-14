@@ -11,6 +11,7 @@ export default function IndexPage() {
       <p>Add reusable UI components in <code>/Components</code>.</p>
       <p>Add API handlers in <code>/api</code>.</p>
       <p>Try <code>/api/highlights</code> for a sample JSON response.</p>
+      <p>Try <code>/users/42</code> for a dynamic route example with params.</p>
       <p>Start by editing <code>/routes/index.jsx</code>.</p>
       <AlertBox
         title="Interactive example"

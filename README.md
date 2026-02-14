@@ -140,6 +140,7 @@ The scaffold currently generates:
 
 - `routes/_app.jsx`: global app shell and route metadata output.
 - `routes/index.jsx`: starter route with technical guidance.
+- `routes/users/[id].jsx`: dynamic route example using `params.id`.
 - `Components/AlertBox.jsx`: interactive client component example.
 - `api/health.js`: sample API endpoint.
 - `api/highlights.js`: sample JSON array endpoint (Spanish content).
