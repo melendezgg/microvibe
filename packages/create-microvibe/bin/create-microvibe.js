@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const templateDir = path.join(__dirname, "..", "template");
-const runtimeServerPath = path.join(__dirname, "..", "..", "microvibe", "src", "server.tsx");
+const runtimeSrcDir = path.join(__dirname, "..", "..", "microvibe", "src");
+const runtimeFiles = ["server.tsx", "router.ts", "route-params.ts", "api.ts", "module-loader.ts"];
 const targetName = process.argv[2] || "my-app";
 const targetDir = path.resolve(process.cwd(), targetName);
 
@@ -45,13 +46,30 @@ async function main() {
 
   await copyDir(templateDir, targetDir);
 
-  if (!(await exists(runtimeServerPath))) {
-    throw new Error(`Runtime server source not found: ${runtimeServerPath}`);
-  }
+  const runtimeTargetDir = path.join(targetDir, ".microvibe", "runtime");
+  await fs.mkdir(runtimeTargetDir, { recursive: true });
 
-  const serverSource = await fs.readFile(runtimeServerPath, "utf8");
-  const serverTargetPath = path.join(targetDir, "server.tsx");
-  await fs.writeFile(serverTargetPath, serverSource, "utf8");
+  for (const fileName of runtimeFiles) {
+    const srcPath = path.join(runtimeSrcDir, fileName);
+    if (!(await exists(srcPath))) {
+      throw new Error(`Runtime source not found: ${srcPath}`);
+    }
+    let source = await fs.readFile(srcPath, "utf8");
+
+    if (fileName === "server.tsx") {
+      source = source
+        .replaceAll('"./api"', '"./.microvibe/runtime/api"')
+        .replaceAll('"./module-loader"', '"./.microvibe/runtime/module-loader"')
+        .replaceAll('"./route-params"', '"./.microvibe/runtime/route-params"')
+        .replaceAll('"./router"', '"./.microvibe/runtime/router"');
+      const serverTargetPath = path.join(targetDir, "server.tsx");
+      await fs.writeFile(serverTargetPath, source, "utf8");
+      continue;
+    }
+
+    const helperTargetPath = path.join(runtimeTargetDir, fileName);
+    await fs.writeFile(helperTargetPath, source, "utf8");
+  }
 
   const packageJsonPath = path.join(targetDir, "package.json");
   const raw = await fs.readFile(packageJsonPath, "utf8");

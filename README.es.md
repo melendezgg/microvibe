@@ -125,6 +125,36 @@ Actualmente el scaffold genera:
 - `public/app.css`: estilos base neutrales y responsive.
 - `public/client.entry.js`: entrada de hidratación en cliente.
 - `server.tsx`: entrada del runtime del servidor local (generado desde `packages/microvibe/src/server.tsx`).
+- `.microvibe/runtime/*`: helpers internos del runtime usados por `server.tsx` (`api.ts`, `router.ts`, `route-params.ts`, `module-loader.ts`).
+
+## Enfócate en el Código de tu App
+
+Las apps generadas incluyen una carpeta interna:
+
+- `.microvibe/runtime/`
+
+Pensala como internals del framework. En el trabajo diario, normalmente no hace falta tocarla.
+La mayoría de cambios deberían ir en:
+
+- `routes/`
+- `Components/`
+- `api/`
+- `public/`
+
+## Qué Mejoró Ahora (Routing + API)
+
+- Las rutas se resuelven de forma predecible:
+  rutas estáticas ganan a dinámicas, y dinámicas ganan a catch-all.
+- El routing dinámico soporta:
+  `[id]`, `[...slug]` y `[[...slug]]`.
+- Puedes validar params de ruta cuando haga falta:
+  `400` para input inválido y `404` cuando el recurso no existe.
+- Las rutas API ahora responden mejor en métodos no permitidos:
+  `405 Method Not Allowed` con header `Allow`.
+- Los errores API tienen un formato único:
+  `{ ok: false, code, error }`.
+- La carga de módulos del runtime usa cache con invalidación automática al cambiar archivos,
+  para mantener desarrollo local rápido sin código obsoleto.
 
 ## Guía de Edición
 
