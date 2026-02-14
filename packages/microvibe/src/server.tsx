@@ -1,11 +1,11 @@
 import http from "node:http";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import { build } from "esbuild";
 import { h, type VNode } from "preact";
 import render from "preact-render-to-string";
 import { selectApiHandler } from "./api";
+import { getFileVersion, loadVersionedModule } from "./module-loader";
 import {
   type RouteParamRules,
   type RouteParamsValidator,
@@ -60,6 +60,8 @@ const contentType: Record<string, string> = {
   ".json": "application/json; charset=utf-8",
 };
 
+const routeBundleCache = new Map<string, { version: string; code: string }>();
+
 async function fileExists(filePath: string) {
   try {
     await fs.access(filePath);
@@ -78,6 +80,10 @@ async function resolveAppWrapper() {
 }
 
 async function bundleRouteModule(filePath: string) {
+  const version = await getFileVersion(filePath);
+  const cached = routeBundleCache.get(filePath);
+  if (cached && cached.version === version) return { code: cached.code, version };
+
   const importPath = filePath.split(path.sep).join(path.posix.sep);
   const result = await build({
     stdin: {
@@ -105,7 +111,8 @@ async function bundleRouteModule(filePath: string) {
 
   const output = result.outputFiles?.[0]?.text;
   if (!output) throw new Error("No output generated for route module");
-  return output;
+  routeBundleCache.set(filePath, { version, code: output });
+  return { code: output, version };
 }
 
 async function serveStatic(urlPath: string, res: http.ServerResponse) {
@@ -169,7 +176,8 @@ async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, ur
   }
 
   try {
-    const mod = (await import(pathToFileURL(resolved.file).href + `?t=${Date.now()}`)) as ApiModule;
+    const loaded = await loadVersionedModule<ApiModule>(resolved.file);
+    const mod = loaded.mod;
     const method = (req.method || "GET").toUpperCase();
     const selected = selectApiHandler(mod, method);
 
@@ -244,9 +252,9 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
     }
 
     try {
-      const code = await bundleRouteModule(absolutePath);
+      const bundled = await bundleRouteModule(absolutePath);
       res.writeHead(200, { "Content-Type": "application/javascript; charset=utf-8" });
-      res.end(code);
+      res.end(bundled.code);
     } catch (error) {
       res.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
       res.end(`Route module build error: ${String(error)}`);
@@ -264,7 +272,8 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
       return;
     }
 
-    const routeMod = (await import(pathToFileURL(resolved.file).href + `?t=${Date.now()}`)) as RouteModule;
+    const routeLoaded = await loadVersionedModule<RouteModule>(resolved.file);
+    const routeMod = routeLoaded.mod;
     if (typeof routeMod.default !== "function") {
       throw new Error(`Route ${resolved.file} must export default component`);
     }
@@ -282,14 +291,15 @@ async function handle(req: http.IncomingMessage, res: http.ServerResponse) {
 
     const app = await resolveAppWrapper();
     if (app) {
-      const appMod = (await import(pathToFileURL(app.file).href + `?t=${Date.now()}`)) as RouteModule;
+      const appLoaded = await loadVersionedModule<RouteModule>(app.file);
+      const appMod = appLoaded.mod;
       if (typeof appMod.default === "function") {
         const routeFile = path.relative(routesDir, resolved.file).replace(/\\/g, "/");
         const routeRuntime =
           routeMode === "client"
             ? {
                 mode: "client",
-                moduleUrl: `/__route_module?file=${encodeURIComponent(routeFile)}&t=${Date.now()}`,
+                moduleUrl: `/__route_module?file=${encodeURIComponent(routeFile)}&v=${encodeURIComponent(routeLoaded.version)}`,
                 props: {
                   params: resolved.params,
                   url: { pathname: url.pathname, search: url.search },
